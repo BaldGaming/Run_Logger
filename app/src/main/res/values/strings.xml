@@ -1,3 +1,19 @@
 <resources>
     <string name="app_name">Run Logger</string>
+    <string name="title_run_logger">RUN LOGGER</string>
+    <string name="btn_select_photo">SELECT PHOTO</string>
+    <string name="label_distance">DISTANCE</string>
+    <string name="label_time">TIME</string>
+    <string name="label_pace">PACE</string>
+    <string name="label_speed">SPEED (KPH)</string>
+    <string name="label_calories">CALORIES</string>
+    <string name="unit_km">KM</string>
+    <string name="default_stat_value">—</string>
+    <string name="default_distance_value">— KM</string>
+    <string name="hint_scanned_value">Scanned value review...</string>
+    <string name="status_ready">Ready to log</string>
+    <string name="version_rights">VERSION 1.0.2ㅤ|ㅤ©BALD INC.</string>
+    <string name="btn_log_to_notion">LOG TO NOTION</string>
+    <string name="label_run_type">Run Type</string>
+    <string name="label_effort_level">Effort Level</string>
 </resources>
