@@ -36,6 +36,7 @@ android {
 }
 
 dependencies {
+    implementation("com.google.mlkit:text-recognition:16.0.1")
     implementation("androidx.gridlayout:gridlayout:1.0.0")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

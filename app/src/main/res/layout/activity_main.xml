@@ -10,7 +10,10 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="20dp">
+        android:padding="20dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:focusableInTouchMode="true">
 
         <TextView
             android:id="@+id/my_title"
@@ -144,9 +147,10 @@
                 android:id="@+id/dropdown_run_type"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:contentDescription="@string/label_run_type"
                 android:inputType="none"
                 android:textColor="@android:color/white"
-                android:contentDescription="@string/label_run_type"
+                app:dropDownBackgroundTint="@color/surface_card"
                 tools:ignore="EditableContentDesc" />
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -165,9 +169,10 @@
                 android:id="@+id/dropdown_effort"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:contentDescription="@string/label_effort_level"
                 android:inputType="none"
                 android:textColor="@android:color/white"
-                android:contentDescription="@string/label_effort_level"
+                app:dropDownBackgroundTint="@color/surface_card"
                 tools:ignore="EditableContentDesc" />
         </com.google.android.material.textfield.TextInputLayout>
 
