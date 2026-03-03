@@ -41,8 +41,38 @@ class MainActivity : AppCompatActivity() {
                     // Feed the image to the recognizer
                     val result = recognizer.process(image)
                         // Raw scanned text
-                        .addOnSuccessListener { visionText ->
-                            Log.d("MLKit", "Raw Scanned Text:\n${visionText.text}")
+                        .addOnSuccessListener { scanned_text ->
+                            // Raw data extraction
+                            val raw_string = scanned_text.text
+
+                            // Regex definitions
+                            val distance_regex = Regex("""-\s*\d{2}:\d{2}\s*\n(.*)""")
+                            val time_regex     = Regex("""[\dO]:[\dO]{2}:[\dO]{2}""")
+                            val pace_regex     = Regex("""\b[\dO]:[\dO]{2}\b(?!\:)""")
+                            val speed_regex    = Regex("""\d{1,2}\.?\d*\s*kph""")
+                            val calories_regex = Regex("""\b\d{3}\b""")
+
+                            // Pattern search
+                            val distance_res = distance_regex.find(raw_string)
+                            val time_res     = time_regex.find(raw_string)
+                            val pace_res     = pace_regex.find(raw_string)
+                            val speed_res    = speed_regex.find(raw_string)
+                            val calories_res = calories_regex.find(raw_string)
+
+                            // Value extraction
+                            val distance = distance_res?.value
+                            val time     = time_res?.value
+                            val pace     = pace_res?.value
+                            val speed    = speed_res?.value
+                            val calories = calories_res?.value
+
+                            // Debugging shit
+                            Log.d("MLKit", "Raw Scanned Text:\n${scanned_text.text}")
+                                    Log.d("Parser", "Found distance: $distance")
+                            Log.d("Parser", "Found time: $time")
+                            Log.d("Parser", "Found pace: $pace")
+                            Log.d("Parser", "Found speed: $speed")
+                            Log.d("Parser", "Found calories: $calories")
                         }
                         .addOnFailureListener { e ->
                             Log.e("MLKit", "Scanner failed", e)
