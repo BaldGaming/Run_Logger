@@ -205,7 +205,7 @@
             android:id="@+id/version"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="VERSION 1.2.1ㅤ|ㅤ© BALD INC."
+            android:text="VERSION 1.2.2ㅤ|ㅤ© BALD INC."
             android:textColor="@color/text_secondary"
             android:textSize="8.5sp"
             app:layout_constraintBottom_toBottomOf="parent"
