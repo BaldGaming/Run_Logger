@@ -26,7 +26,10 @@ class MainActivity : AppCompatActivity() {
         setup_dropdowns()
         setup_tiles()
 
-        // Android's photo picker
+        // LOG TO NOTION button
+        val log_btn: Button = findViewById(R.id.log_button)
+
+        // Android's photo picker logic
         val image_select = registerForActivityResult(PickVisualMedia()) { uri ->
             if (uri != null) {
                 Log.d("PhotoPicker", "Selected URI: $uri")
@@ -46,10 +49,10 @@ class MainActivity : AppCompatActivity() {
                             val raw_string = scanned_text.text
 
                             // Regex definitions
-                            val distance_regex = Regex("""-\s*\d{2}:\d{2}\s*\n(.*)""")
-                            val time_regex     = Regex("""[\dO]:[\dO]{2}:[\dO]{2}""")
+                            val distance_regex = Regex("""\b(?!\d{4})\d{3}|\b\d{1}[.]\d{2}""")
+                            val time_regex     = Regex(""":[\dO]{2}:[\dO]{2}""")
                             val pace_regex     = Regex("""\b[\dO]:[\dO]{2}\b(?!\:)(?![ ]*[A-Za-z])""")
-                            val speed_regex    = Regex("""\d{1,2}\.?\d*\s*kph""")
+                            val speed_regex    = Regex("""\d{1,2}\.?\d*\s*k""")
                             val calories_regex = Regex("""\b(?!784\b)\d{2,4}\b""")
 
                             // Pattern search
@@ -60,13 +63,37 @@ class MainActivity : AppCompatActivity() {
                             val calories_res = calories_regex.findAll(raw_string).lastOrNull() // lastOrNull grabs the very last value (the callories)
 
                             // Value extraction
-                            val distance = distance_res?.value
-                            val time     = time_res?.value
-                            val pace     = pace_res?.value
-                            val speed    = speed_res?.value
-                            val calories = calories_res?.value
+                            val distance           = distance_res?.value
+                            val time_post          = time_res?.value
+                            val time               = time_post?.drop(1) // removes the ":" at the start
+                            val pace               = pace_res?.value
+                            val speed_post         = speed_res?.value
+                            val speed              = speed_post?.dropLast(2) // removes the " k" from the end
+                            val calories           = calories_res?.value
 
+                            // UI update
+                            val stats_map = mapOf(
+                                R.id.tile_distance to distance,
+                                R.id.tile_time     to time,
+                                R.id.tile_pace     to pace,
+                                R.id.tile_speed    to speed,
+                                R.id.tile_calories to calories )
 
+                            for ( (tile_id, value) in stats_map) {
+                                val tile_view = findViewById<android.view.View>(tile_id)
+                                val value_text_view = tile_view.findViewById<TextView>(R.id.tile_value)
+
+                                // Set the text to the value, or "ERROR" if it failed
+                                value_text_view.text = value ?: "ERROR"
+                            }
+
+                            // LOG TO NOTION button unlock
+                            val null_check = stats_map.containsValue(null)
+
+                            if (!null_check)
+                                Log.d("Unlock", "Null detected, see 'Parser'")
+                            else
+                                log_btn.isEnabled = true
 
                             // Debugging shit
                             Log.d("MLKit", "Raw Scanned Text:\n${scanned_text.text}")
@@ -81,7 +108,7 @@ class MainActivity : AppCompatActivity() {
                             Log.e("MLKit", "Scanner failed", e)
                         }
 
-                    // debug shit
+
                 } catch (e: Exception) { Log.e("PhotoPicker", "Failed to load image", e) }
             } else { Log.d("PhotoPicker", "No media selected") }
         }
@@ -90,13 +117,11 @@ class MainActivity : AppCompatActivity() {
         val select_photo_btn: Button = findViewById(R.id.upload_button)
         select_photo_btn.setOnClickListener {
             Log.d("MainActivity", "Select Photo button clicked")
-            // TODO: gallery logic
             // calls photo picker
             image_select.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
         }
 
-        // "LOG TO NOTION" Button
-        val log_btn: Button = findViewById(R.id.log_button)
+        // "LOG TO NOTION" Button listener logic
         log_btn.setOnClickListener {
             Log.d("MainActivity", "Log to Notion button clicked")
             // TODO: Notion logic

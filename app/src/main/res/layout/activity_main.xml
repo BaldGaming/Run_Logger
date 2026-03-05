@@ -187,7 +187,8 @@
             android:layout_marginTop="32dp"
             app:layout_constraintTop_toBottomOf="@id/layout_effort"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            app:layout_constraintEnd_toEndOf="parent"
+            android:enabled = "false" />
 
         <TextView
             android:id="@+id/feedback"
@@ -204,7 +205,7 @@
             android:id="@+id/version"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="VERSION 1.1.2ㅤ|ㅤ© BALD INC."
+            android:text="VERSION 1.1.3ㅤ|ㅤ© BALD INC."
             android:textColor="@color/text_secondary"
             android:textSize="8.5sp"
             app:layout_constraintBottom_toBottomOf="parent"
