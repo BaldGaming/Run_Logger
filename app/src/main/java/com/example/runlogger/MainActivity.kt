@@ -1,27 +1,43 @@
 package com.example.runlogger
 
 // Libraries
+import android.graphics.Color
 import android.os.Bundle
-import android.widget.ArrayAdapter
-import android.widget.AutoCompleteTextView
-import android.widget.Button
-import android.widget.TextView
-import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
 import android.util.Log
+import android.widget.*
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import androidx.core.content.ContextCompat
-import android.graphics.Color
+import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.text.SimpleDateFormat
+import java.util.*
+
+// tells the IDE to shut the fuck up about snake_case
+@Suppress("PropertyName", "LocalVariableName", "FunctionName")
 
 // Main Activity
 class MainActivity : AppCompatActivity() {
+
+    // variables for the parsed data
+    private var distance_val: Double? = null
+    private var time_val: String? = null
+    private var pace_val: String? = null
+    private var speed_val: Double? = null
+    private var calories_val: Double? = null
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+
         Log.d("MainActivity", "onCreate: App started")
 
         // Initializes the Dropdowns and label fields
@@ -30,6 +46,7 @@ class MainActivity : AppCompatActivity() {
 
         // LOG TO NOTION button
         val log_btn: Button = findViewById(R.id.log_button)
+        val feedback_text: TextView = findViewById(R.id.feedback)
 
         // Android's photo picker logic
         val image_select = registerForActivityResult(PickVisualMedia()) { uri ->
@@ -38,85 +55,71 @@ class MainActivity : AppCompatActivity() {
 
                 try {
                     // Convert the Uri into an InputImage
-                    val image = com.google.mlkit.vision.common.InputImage.fromFilePath(this, uri)
+                    val image = InputImage.fromFilePath(this, uri)
 
                     // Latin Text Recognizer
-                    val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+                    val recognizer =
+                        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
                     // Feed the image to the recognizer
-                    val result = recognizer.process(image)
+                    recognizer.process(image).addOnSuccessListener { scanned_text ->
                         // Raw scanned text
-                        .addOnSuccessListener { scanned_text ->
-                            // Raw data extraction
-                            val raw_string = scanned_text.text
+                        val raw_string = scanned_text.text
 
-                            // Regex definitions
-                            val distance_regex = Regex("""\b(?!\d{4})\d{3}|\b\d{1}[.]\d{2}""")
-                            val time_regex     = Regex(""":[\dO]{2}:[\dO]{2}""")
-                            val pace_regex     = Regex("""\b[\dO]:[\dO]{2}\b(?!\:)(?![ ]*[A-Za-z])""")
-                            val speed_regex    = Regex("""\d{1,2}\.?\d*\s*k""")
-                            val calories_regex = Regex("""\b(?!784\b)\d{2,4}\b""")
+                        // Regex definitions
+                        val distance_regex = Regex("""\b(?!\d{4})\d{3}|\b\d[.]\d{2}""")
+                        val time_regex = Regex(""":[\dO]{2}:[\dO]{2}""")
+                        val pace_regex = Regex("""\b[\dO]:[\dO]{2}\b(!:)(?![ ]*[A-Za-z])""")
+                        val speed_regex = Regex("""\d{1,2}\.?\d*\s*k""")
+                        val calories_regex = Regex("""\b(?!784\b)\d{2,4}\b""")
 
-                            // Pattern search
-                            val distance_res = distance_regex.find(raw_string)
-                            val time_res     = time_regex.find(raw_string)
-                            val pace_res     = pace_regex.find(raw_string)
-                            val speed_res    = speed_regex.find(raw_string)
-                            val calories_res = calories_regex.findAll(raw_string).lastOrNull() // lastOrNull grabs the very last value (the callories)
+                        // Pattern search
+                        val distance_res = distance_regex.find(raw_string)
+                        val time_res = time_regex.find(raw_string)
+                        val pace_res = pace_regex.find(raw_string)
+                        val speed_res = speed_regex.find(raw_string)
+                        val calories_res = calories_regex.findAll(raw_string).lastOrNull()
 
-                            // Value extraction
-                            val distance           = distance_res?.value
-                            val time_post          = time_res?.value
-                            val time               = time_post?.drop(1) // removes the ":" at the start
-                            val pace               = pace_res?.value
-                            val speed_post         = speed_res?.value
-                            val speed              = speed_post?.dropLast(2) // removes the " k" from the end
-                            val calories           = calories_res?.value
+                        // Value extraction & String-to-Double conversion
+                        distance_val = distance_res?.value?.toDoubleOrNull()
+                        time_val = time_res?.value?.drop(1)
+                        pace_val = pace_res?.value
+                        speed_val = speed_res?.value?.dropLast(2)?.toDoubleOrNull()
+                        calories_val = calories_res?.value?.toDoubleOrNull()
 
-                            // UI update
-                            val stats_map = mapOf(
-                                R.id.tile_distance to distance,
-                                R.id.tile_time     to time,
-                                R.id.tile_pace     to pace,
-                                R.id.tile_speed    to speed,
-                                R.id.tile_calories to calories )
+                        // UI update
+                        update_ui_tiles()
 
-                            for ( (tile_id, value) in stats_map) {
-                                val tile_view = findViewById<android.view.View>(tile_id)
-                                val value_text_view = tile_view.findViewById<TextView>(R.id.tile_value)
+                        // LOG TO NOTION button unlock logic
+                        val is_data_ready = listOf(
+                            distance_val,
+                            time_val,
+                            pace_val,
+                            speed_val,
+                            calories_val
+                        ).none { it == null }
 
-                                // Set the text to the value, or "ERROR" if it failed
-                                value_text_view.text = value ?: "ERROR"
-                            }
-
-                            // LOG TO NOTION button unlock + color change
-                            val null_check = stats_map.containsValue(null)
-
-                            if (null_check) {
-                                // Button lock
-                                log_press(true, log_btn)
-                                Log.d("Lock", "Null detected, see 'Parser'") }
-                            else {
-                                // Button unlock
-                                log_press(false, log_btn)
-                            }
-
-                            // Debugging shit
-                            Log.d("MLKit", "Raw Scanned Text:\n${scanned_text.text}")
-                            Log.d("Parser", "Found distance: $distance")
-                            Log.d("Parser", "Found time: $time")
-                            Log.d("Parser", "Found pace: $pace")
-                            Log.d("Parser", "Found speed: $speed")
-                            Log.d("Parser", "Found calories: $calories")
-                            Log.d("Parser", "\n")
+                        if (!is_data_ready) {
+                            log_press(true, log_btn)
+                            Log.d("Lock", "Data incomplete, check 'Parser' logs")
+                        } else {
+                            log_press(false, log_btn)
                         }
+
+                        // Debugging shit
+                        Log.d(
+                            "Parser",
+                            "Distance: $distance_val, Time: $time_val, Speed: $speed_val"
+                        )
+                    }
                         .addOnFailureListener { e ->
                             Log.e("MLKit", "Scanner failed", e)
                         }
 
-
-                } catch (e: Exception) { Log.e("PhotoPicker", "Failed to load image", e) }
-            } else { Log.d("PhotoPicker", "No media selected") }
+                } catch (e: Exception) {
+                    Log.e("PhotoPicker", "Failed to load image", e)
+                }
+            }
         }
 
         // "SELECT PHOTO" Button.
@@ -129,16 +132,59 @@ class MainActivity : AppCompatActivity() {
 
         // "LOG TO NOTION" Button listener logic
         log_btn.setOnClickListener {
-            // TODO: Notion logic
             Log.d("MainActivity", "Log to Notion button clicked")
+
+            // Time prep
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val current_date = sdf.format(Date())
 
             // Button lock
             log_press(true, log_btn)
 
+            feedback_text.text = "Attempting to log..."
 
-            val feedback: TextView = findViewById(R.id.feedback)
+            // Build the Notion request
+            val request = NotionPageRequest(
+                parent = DatabaseParent("2a662eb7e82a81aebfafe93cf5231066"),
+                properties = RunProperties(
+                    date = DateValue(DateDetail(current_date)),
+                    distance = NumberValue(distance_val),
+                    time = listOf(RichTextValue(TextContent(time_val))),
+                    speed = NumberValue(speed_val),
+                    pace = listOf(RichTextValue(TextContent(pace_val))),
+                    calories = NumberValue(calories_val)
+                )
+            )
 
-            feedback.text = "Attempting to log..."
+            // Launch network call in background thread
+            lifecycleScope.launch {
+                try {
+                    val response = RetrofitInstance.api.create_run_page(request)
+                    if (response.isSuccessful) {
+                        feedback_text.text = "Log Successful!"
+                    } else {
+                        feedback_text.text = "Error: ${response.code()}"
+                    }
+                } catch (e: Exception) {
+                    feedback_text.text = "Connection Failed"
+                }
+            }
+        }
+    }
+
+    // Function that updates tile values on the UI
+    private fun update_ui_tiles() {
+        val stats_map = mapOf(
+            R.id.tile_distance to distance_val?.toString(),
+            R.id.tile_time     to time_val,
+            R.id.tile_pace     to pace_val,
+            R.id.tile_speed    to speed_val?.toString(),
+            R.id.tile_calories to calories_val?.toString()
+        )
+
+        for ((tile_id, value) in stats_map) {
+            val tile_view = findViewById<LinearLayout>(tile_id)
+            tile_view.findViewById<TextView>(R.id.tile_value).text = value ?: "ERROR"
         }
     }
 
