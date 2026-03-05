@@ -8,24 +8,28 @@ data class NotionPageRequest(
     val properties: RunProperties
 )
 
-// Parent (the database)
 data class DatabaseParent(val database_id: String)
 
-// Properties of said parent
 data class RunProperties(
-    @SerializedName("Date")            val date: DateValue,
-    @SerializedName("Distance")        val distance: NumberValue,
-    @SerializedName("Time (text)")     val time: List<RichTextValue>,
-    @SerializedName("Avg Speed(km/h)") val speed: NumberValue,
-    @SerializedName("Avg Pace(km)")    val pace: List<RichTextValue>,
-    @SerializedName("Est. Calories")   val calories: NumberValue
+    @SerializedName("Date")            val date: DateProperty,
+    @SerializedName("Distance")        val distance: NumberProperty,
+    @SerializedName("Time (text)")     val timeText: RichTextProperty,
+    @SerializedName("Avg Speed(km/h)") val avgSpeed: NumberProperty,
+    @SerializedName("Avg Pace(km)")    val avgPace: RichTextProperty,
+    @SerializedName("Est. Calories")   val calories: NumberProperty,
+    @SerializedName("Type")            val type: SelectProperty,
+    @SerializedName("Effort")          val effort: SelectProperty
 )
 
-// Value wrappers
-data class NumberValue(val number: Double?)
+// Property Type Wrappers
+data class DateProperty(val date: DateValue)
+data class DateValue(val start: String)
 
-data class DateValue(val date: DateDetail)
-data class DateDetail(val start: String)
+data class NumberProperty(val number: Double?)
 
+data class RichTextProperty(@SerializedName("rich_text") val richText: List<RichTextValue>)
 data class RichTextValue(val text: TextContent)
 data class TextContent(val content: String?)
+
+data class SelectProperty(val select: SelectValue)
+data class SelectValue(val name: String)

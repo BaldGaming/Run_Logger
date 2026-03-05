@@ -6,16 +6,14 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
-import com.example.runlogger.BuildConfig
 
-@Suppress("FunctionName", "PropertyName")
 interface NotionService {
     @POST("v1/pages")
     suspend fun create_run_page(@Body request: NotionPageRequest): Response<Unit>
 }
 
 object RetrofitInstance {
-    private const val BASE_URL = "https://api.notion.so/"
+    private const val BASE_URL = "https://api.notion.com/" // Changed to .com
     private const val AUTH_TOKEN = BuildConfig.NOTION_TOKEN
     private const val NOTION_VERSION = "2022-06-28"
 
@@ -28,12 +26,12 @@ object RetrofitInstance {
         chain.proceed(request)
     }.build()
 
-    val api: NotionServices by lazy {
+    val api: NotionService by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-            .create(NotionServices::class.java)
+            .create(NotionService::class.java)
     }
 }

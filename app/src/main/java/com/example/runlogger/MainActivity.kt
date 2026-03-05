@@ -15,9 +15,11 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import java.text.SimpleDateFormat
 import java.util.*
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 
 // tells the IDE to shut the fuck up about snake_case
 @Suppress("PropertyName", "LocalVariableName", "FunctionName")
@@ -51,7 +53,7 @@ class MainActivity : AppCompatActivity() {
         // Android's photo picker logic
         val image_select = registerForActivityResult(PickVisualMedia()) { uri ->
             if (uri != null) {
-                Log.d("PhotoPicker", "Selected URI: $uri")
+                Log.d("PhotoPicker", "Image selected: $uri")
 
                 try {
                     // Convert the Uri into an InputImage
@@ -68,9 +70,9 @@ class MainActivity : AppCompatActivity() {
 
                         // Regex definitions
                         val distance_regex = Regex("""\b(?!\d{4})\d{3}|\b\d{1}[.]\d{2}""")
-                        val time_regex     = Regex(""":[\dO]{2}:[\dO]{2}""")
-                        val pace_regex     = Regex("""\b[\dO]:[\dO]{2}\b(?!\:)(?![ ]*[A-Za-z])""")
-                        val speed_regex    = Regex("""\d{1,2}\.?\d*\s*k""")
+                        val time_regex = Regex(""":[\dO]{2}:[\dO]{2}""")
+                        val pace_regex = Regex("""\b[\dO]:[\dO]{2}\b(?!\:)(?![ ]*[A-Za-z])""")
+                        val speed_regex = Regex("""\d{1,2}\.?\d*\s*k""")
                         val calories_regex = Regex("""\b(?!784\b)\d{2,4}\b""")
 
                         // Pattern search
@@ -101,24 +103,21 @@ class MainActivity : AppCompatActivity() {
 
                         if (!is_data_ready) {
                             log_press(true, log_btn)
-                            Log.d("Lock", "Data incomplete, check 'Parser' logs")
                         } else {
                             log_press(false, log_btn)
                         }
 
-                        // Debugging shit
-                        Log.d(
-                            "Parser",
-                            "Distance: $distance_val, Time: $time_val, Speed: $speed_val"
-                        )
                     }
                         .addOnFailureListener { e ->
                             Log.e("MLKit", "Scanner failed", e)
+                            feedback_text.text = "Scan failed"
                         }
 
                 } catch (e: Exception) {
                     Log.e("PhotoPicker", "Failed to load image", e)
                 }
+            } else {
+                Log.d("PhotoPicker", "No image selected")
             }
         }
 
@@ -132,29 +131,43 @@ class MainActivity : AppCompatActivity() {
 
         // "LOG TO NOTION" Button listener logic
         log_btn.setOnClickListener {
-            Log.d("MainActivity", "Log to Notion button clicked")
+            Log.d("NotionAPI", "BUTTON CLICKED - STARTING LOG PROCESS")
 
-            // Time prep
-            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val current_date = sdf.format(Date())
+            val current_date =
+                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
-            // Button lock
+            // Get current values from dropdowns
+            val selectedType =
+                findViewById<AutoCompleteTextView>(R.id.dropdown_run_type).text.toString()
+            val selectedEffort =
+                findViewById<AutoCompleteTextView>(R.id.dropdown_effort).text.toString()
+
             log_press(true, log_btn)
+            feedback_text.text = "Logging..."
 
-            feedback_text.text = "Attempting to log..."
-
-            // Build the Notion request
+            // Build the Notion request according to your schema
             val request = NotionPageRequest(
                 parent = DatabaseParent("2a662eb7e82a81aebfafe93cf5231066"),
                 properties = RunProperties(
-                    date = DateValue(DateDetail(current_date)),
-                    distance = NumberValue(distance_val),
-                    time = listOf(RichTextValue(TextContent(time_val))),
-                    speed = NumberValue(speed_val),
-                    pace = listOf(RichTextValue(TextContent(pace_val))),
-                    calories = NumberValue(calories_val)
+                    date = DateProperty(DateValue(current_date)),
+                    distance = NumberProperty(distance_val),
+                    timeText = RichTextProperty(listOf(RichTextValue(TextContent(time_val)))),
+                    avgSpeed = NumberProperty(speed_val),
+                    avgPace = RichTextProperty(listOf(RichTextValue(TextContent(pace_val)))),
+                    calories = NumberProperty(calories_val),
+                    type = SelectProperty(SelectValue(selectedType)),
+                    effort = SelectProperty(SelectValue(selectedEffort))
                 )
             )
+
+            // Modern diagnostic check for Android 10+
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val capabilities = cm.getNetworkCapabilities(cm.activeNetwork)
+            val isConnected = capabilities != null &&
+                    (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR))
+
+            Log.d("NotionAPI", "API check - Connection: $isConnected")
 
             // Launch network call in background thread
             lifecycleScope.launch {
@@ -163,10 +176,12 @@ class MainActivity : AppCompatActivity() {
                     if (response.isSuccessful) {
                         feedback_text.text = "Log Successful!"
                     } else {
-                        feedback_text.text = "Error: ${response.code()}"
+                        Log.e("NotionAPI", "Task failed: ${response.code()}")
+                        feedback_text.text = "Server Error (${response.code()})"
                     }
                 } catch (e: Exception) {
-                    feedback_text.text = "Connection Failed"
+                    Log.e("NotionAPI", "Task failed", e)
+                    feedback_text.text = "Failed: Network Error"
                 }
             }
         }
@@ -176,9 +191,9 @@ class MainActivity : AppCompatActivity() {
     private fun update_ui_tiles() {
         val stats_map = mapOf(
             R.id.tile_distance to distance_val?.toString(),
-            R.id.tile_time     to time_val,
-            R.id.tile_pace     to pace_val,
-            R.id.tile_speed    to speed_val?.toString(),
+            R.id.tile_time to time_val,
+            R.id.tile_pace to pace_val,
+            R.id.tile_speed to speed_val?.toString(),
             R.id.tile_calories to calories_val?.toString()
         )
 
@@ -190,24 +205,19 @@ class MainActivity : AppCompatActivity() {
 
     // Function that handles the dropdown logic
     private fun setup_dropdowns() {
-        Log.d("MainActivity", "Setting up dropdowns")
-        // Array of the dropdown options
         val run_types = arrayOf("Recovery", "Speed", "Distance", "Running Machine")
         val effort_levels = arrayOf("Low", "Medium", "High")
 
-        // Adapters for the dropdown options (makes them work, basically)
         val type_adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, run_types)
-        val effort_adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, effort_levels)
+        val effort_adapter =
+            ArrayAdapter(this, android.R.layout.simple_list_item_1, effort_levels)
 
-        // Dropdown variables
         val type_dropdown: AutoCompleteTextView = findViewById(R.id.dropdown_run_type)
         val effort_dropdown: AutoCompleteTextView = findViewById(R.id.dropdown_effort)
 
-        // Sets the adapters for the dropdowns
         type_dropdown.setAdapter(type_adapter)
         effort_dropdown.setAdapter(effort_adapter)
 
-        // Forces the floating label to drop back down when the menu closes
         type_dropdown.setOnDismissListener {
             type_dropdown.clearFocus()
         }
@@ -218,12 +228,16 @@ class MainActivity : AppCompatActivity() {
 
     // Function that handles the tile logic
     private fun setup_tiles() {
-        Log.d("MainActivity", "Setting up UI tiles")
-        val distance_label: TextView = findViewById<android.view.View>(R.id.tile_distance).findViewById(R.id.tile_label)
-        val time_label: TextView = findViewById<android.view.View>(R.id.tile_time).findViewById(R.id.tile_label)
-        val pace_label: TextView = findViewById<android.view.View>(R.id.tile_pace).findViewById(R.id.tile_label)
-        val speed_label: TextView = findViewById<android.view.View>(R.id.tile_speed).findViewById(R.id.tile_label)
-        val calories_label: TextView = findViewById<android.view.View>(R.id.tile_calories).findViewById(R.id.tile_label)
+        val distance_label: TextView =
+            findViewById<android.view.View>(R.id.tile_distance).findViewById(R.id.tile_label)
+        val time_label: TextView =
+            findViewById<android.view.View>(R.id.tile_time).findViewById(R.id.tile_label)
+        val pace_label: TextView =
+            findViewById<android.view.View>(R.id.tile_pace).findViewById(R.id.tile_label)
+        val speed_label: TextView =
+            findViewById<android.view.View>(R.id.tile_speed).findViewById(R.id.tile_label)
+        val calories_label: TextView =
+            findViewById<android.view.View>(R.id.tile_calories).findViewById(R.id.tile_label)
 
         distance_label.text = "DISTANCE"
         time_label.text = "TIME"
@@ -233,15 +247,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun log_press(flag: Boolean, button: Button) {
-        // Lock
         if (flag) {
             button.isEnabled = false
             button.setBackgroundColor(ContextCompat.getColor(this, R.color.surface_card))
             button.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
-        }
-
-        // Unlock
-        else {
+        } else {
             button.isEnabled = true
             button.setBackgroundColor(ContextCompat.getColor(this, R.color.accent_green))
             button.setTextColor(Color.BLACK)
