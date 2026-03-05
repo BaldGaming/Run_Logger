@@ -1,13 +1,16 @@
+import java.util.Properties
+
 plugins {
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
     alias(libs.plugins.android.application)
 }
 
 android {
     namespace = "com.example.runlogger"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+    compileSdk = 36
+
+    buildFeatures {
+        buildConfig = true
     }
 
     defaultConfig {
@@ -18,6 +21,15 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val properties = Properties()
+        val propertiesFile = project.rootProject.file("local.properties")
+        if (propertiesFile.exists()) {
+            properties.load(propertiesFile.inputStream())
+        }
+
+        // This creates the actual variable in BuildConfig.kt
+        buildConfigField("String", "NOTION_TOKEN", "\"${properties.getProperty("NOTION_TOKEN")}\"")
     }
 
     buildTypes {
@@ -36,7 +48,6 @@ android {
 }
 
 dependencies {
-
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
@@ -51,4 +62,12 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+}
+
+secrets {
+    // Tell the plugin to look in local.properties instead of secrets.properties
+    propertiesFileName = "local.properties"
+
+    // Optional: Default values for variables
+    defaultPropertiesFileName = "local.defaults.properties"
 }

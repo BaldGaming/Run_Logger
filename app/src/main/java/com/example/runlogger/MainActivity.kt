@@ -67,10 +67,10 @@ class MainActivity : AppCompatActivity() {
                         val raw_string = scanned_text.text
 
                         // Regex definitions
-                        val distance_regex = Regex("""\b(?!\d{4})\d{3}|\b\d[.]\d{2}""")
-                        val time_regex = Regex(""":[\dO]{2}:[\dO]{2}""")
-                        val pace_regex = Regex("""\b[\dO]:[\dO]{2}\b(!:)(?![ ]*[A-Za-z])""")
-                        val speed_regex = Regex("""\d{1,2}\.?\d*\s*k""")
+                        val distance_regex = Regex("""\b(?!\d{4})\d{3}|\b\d{1}[.]\d{2}""")
+                        val time_regex     = Regex(""":[\dO]{2}:[\dO]{2}""")
+                        val pace_regex     = Regex("""\b[\dO]:[\dO]{2}\b(?!\:)(?![ ]*[A-Za-z])""")
+                        val speed_regex    = Regex("""\d{1,2}\.?\d*\s*k""")
                         val calories_regex = Regex("""\b(?!784\b)\d{2,4}\b""")
 
                         // Pattern search
