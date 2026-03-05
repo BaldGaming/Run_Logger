@@ -13,6 +13,8 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import androidx.core.content.ContextCompat
+import android.graphics.Color
 
 // Main Activity
 class MainActivity : AppCompatActivity() {
@@ -87,13 +89,17 @@ class MainActivity : AppCompatActivity() {
                                 value_text_view.text = value ?: "ERROR"
                             }
 
-                            // LOG TO NOTION button unlock
+                            // LOG TO NOTION button unlock + color change
                             val null_check = stats_map.containsValue(null)
 
-                            if (!null_check)
-                                Log.d("Unlock", "Null detected, see 'Parser'")
-                            else
-                                log_btn.isEnabled = true
+                            if (null_check) {
+                                // Button lock
+                                log_press(true, log_btn)
+                                Log.d("Lock", "Null detected, see 'Parser'") }
+                            else {
+                                // Button unlock
+                                log_press(false, log_btn)
+                            }
 
                             // Debugging shit
                             Log.d("MLKit", "Raw Scanned Text:\n${scanned_text.text}")
@@ -123,9 +129,15 @@ class MainActivity : AppCompatActivity() {
 
         // "LOG TO NOTION" Button listener logic
         log_btn.setOnClickListener {
-            Log.d("MainActivity", "Log to Notion button clicked")
             // TODO: Notion logic
+            Log.d("MainActivity", "Log to Notion button clicked")
+
+            // Button lock
+            log_press(true, log_btn)
+
+
             val feedback: TextView = findViewById(R.id.feedback)
+
             feedback.text = "Attempting to log..."
         }
     }
@@ -172,5 +184,21 @@ class MainActivity : AppCompatActivity() {
         pace_label.text = "PACE"
         speed_label.text = "SPEED"
         calories_label.text = "CALORIES"
+    }
+
+    private fun log_press(flag: Boolean, button: Button) {
+        // Lock
+        if (flag) {
+            button.isEnabled = false
+            button.setBackgroundColor(ContextCompat.getColor(this, R.color.surface_card))
+            button.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+        }
+
+        // Unlock
+        else {
+            button.isEnabled = true
+            button.setBackgroundColor(ContextCompat.getColor(this, R.color.accent_green))
+            button.setTextColor(Color.BLACK)
+        }
     }
 }
